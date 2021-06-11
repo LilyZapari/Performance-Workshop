@@ -1,0 +1,65 @@
+config:
+  plugins:
+    faker:
+      locale: en
+  target: "https://api.todoist.com"
+  phases:
+    - duration: 1
+      arrivalRate: 1
+      name: "Warm up"
+  defaults:
+    headers:
+      Authorization: Bearer {{ $processEnvironment.TOKEN }}
+      Content-type: application/json
+  variables:
+    project_name:
+      - "$faker.datatype.number"
+    url_project:
+      - "/rest/v1/projects"
+    url_tasks:
+      - "/rest/v1/tasks"
+    task_name:
+      - "$faker.datatype.number"
+    task_description:
+      - "$faker.lorem.word"
+scenarios:
+  - flow:
+    - get:
+        url: "{{ url_tasks }}"
+        capture:
+          json: "$.length"
+          as: "active_tasks"
+    - log: "--- Number of active tasks: {{ active_tasks }} ---"
+    - think: 1
+    - post:
+        url: "{{ url_tasks }}"
+        json:
+          content: "Task: {{ task_name }}"
+        capture:
+          json: "$.id"
+          as: "id_task"
+    - log: "--- Task id is {{ id_task }} ---"
+    - think: 3
+    - get:
+        url: "{{ url_tasks }}/{{ id_task }}"
+        capture:
+          json: "$.content"
+          as: "active_task_content"
+    - log: "--- Active task content is: {{ active_task_content }}} ---"
+    - think: 3
+    - post:
+        url: "{{ url_tasks }}/{{ id_task }}"
+        json:
+          description : "{{ task_description }}"
+    - log: "--- Task {{ id_task }} succesfully updated ---"
+    - post:
+        url: "{{ url_tasks }}/{{ id_task }}/close"
+    - log: "--- Task {{ id_task }} is completed ---"
+    - think: 3
+    - post:
+        url: "{{ url_tasks }}/{{ id_task }}/reopen"
+    - log: "--- Task {{ id_task }} has been re opened ----"
+    - think: 3
+    - delete:
+        url: "{{ url_tasks }}/{{ id_task }}"
+    - log: "--- Task {{ id_task }} has been succesfully deleted ---"
